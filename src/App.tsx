@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import ControlPanel, { type CompRow } from './components/ControlPanel';
 import MapView from './components/MapView';
 import DetailPanel from './components/DetailPanel';
+import ReviewerModal from './components/ReviewerModal';
 import {
   COLORS,
   DATE_COLORS,
@@ -93,6 +94,7 @@ export default function App() {
 
   const [validations, setValidations] = useState<Validations>(() => loadValidations());
   const [reviewer, setReviewer] = useState<string>(() => loadReviewer());
+  const [reviewerModalOpen, setReviewerModalOpen] = useState(false);
 
   const [city, setCity] = useState<CityStats | null>(null);
   const [viewportFeatures, setViewportFeatures] = useState<BFeature[]>([]);
@@ -138,23 +140,20 @@ export default function App() {
     else setActiveStatus(toggle);
   };
 
+  // Returns the current reviewer if set; otherwise opens the modal and
+  // returns '' so callers can prompt the user to set a name and retry.
+  // (Native window.prompt() is blocked inside cross-origin iframes such as
+  // ArcGIS Experience Builder, so we drive an in-app modal instead.)
   const ensureReviewer = (): string => {
     if (reviewer) return reviewer;
-    const n = window.prompt('Reviewer name (stored on this device, added to every decision):', '');
-    if (n && n.trim()) {
-      const name = n.trim();
-      setReviewer(name);
-      saveReviewer(name);
-      return name;
-    }
+    setReviewerModalOpen(true);
     return '';
   };
-  const promptReviewer = () => {
-    const n = window.prompt('Reviewer name (stored on this device, added to every decision):', reviewer || '');
-    if (n && n.trim()) {
-      setReviewer(n.trim());
-      saveReviewer(n.trim());
-    }
+  const promptReviewer = () => setReviewerModalOpen(true);
+  const applyReviewer = (name: string) => {
+    setReviewer(name);
+    saveReviewer(name);
+    setReviewerModalOpen(false);
   };
 
   const saveValidation = (oid: number, rec: ValidationRecord) => {
@@ -241,6 +240,14 @@ export default function App() {
           ensureReviewer={ensureReviewer}
           onSave={saveValidation}
           onClose={() => setDetail(null)}
+        />
+      )}
+
+      {reviewerModalOpen && (
+        <ReviewerModal
+          current={reviewer}
+          onSave={applyReviewer}
+          onClose={() => setReviewerModalOpen(false)}
         />
       )}
 
