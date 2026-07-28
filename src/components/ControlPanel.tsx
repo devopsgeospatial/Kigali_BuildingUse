@@ -181,7 +181,8 @@ export default function ControlPanel(props: Props) {
 
         <div className="note">
           <b>How to validate.</b> Click any building on the map. In the popup choose <b>Matches</b> or{' '}
-          <b>Doesn't match</b>; if it doesn't match, pick the building's actual use. Decisions are stored in this
+          <b>Doesn't match</b>; if it doesn't match, pick the building's actual use. <b>Right-click</b> a building to
+          copy its coordinates. Decisions are stored in this
           browser and can be exported to CSV for the data team. Colours are model <i>predictions</i> — a screening
           layer to prioritise field review.
         </div>

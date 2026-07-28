@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { copyText } from '../clipboard';
 
 interface Props {
   filename: string;
@@ -35,19 +36,7 @@ export default function ExportModal({ filename, data, onClose }: Props) {
   }, [onClose]);
 
   const copy = async () => {
-    // navigator.clipboard is gated behind the `clipboard-write` permission
-    // policy, which embedders rarely grant; execCommand still works on a
-    // selected textarea inside an iframe.
-    try {
-      await navigator.clipboard.writeText(data);
-      setCopied(true);
-    } catch {
-      const el = textRef.current;
-      if (!el) return;
-      el.focus();
-      el.select();
-      try { setCopied(document.execCommand('copy')); } catch { setCopied(false); }
-    }
+    setCopied(await copyText(data));
     window.setTimeout(() => setCopied(false), 2000);
   };
 

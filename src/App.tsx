@@ -304,6 +304,9 @@ export default function App() {
         validations={validations}
         onBasemap={setBasemap}
         onSelect={(feature, x, y) => setDetail({ feature, x, y })}
+        onCoordsCopied={(text, ok) =>
+          ok ? showToast('📋', text + ' copied') : showToast('!', 'Clipboard blocked here')
+        }
         onViewportFeatures={(features) => setViewportFeatures(features)}
       />
 

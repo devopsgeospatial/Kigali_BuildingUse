@@ -5,6 +5,7 @@ import { CONFIG } from '../config';
 import { COLORS, DATE_COLORS, ORDER, STATUS_COLORS } from '../constants';
 import { CITY_BBOX, SECTOR_BBOX } from '../sectors';
 import { loadViewport } from '../featureService';
+import { copyText } from '../clipboard';
 import type { BFeature, Basemap, Mode, Validations } from '../types';
 
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
@@ -27,6 +28,8 @@ interface Props {
   validations: Validations;
   onBasemap: (b: Basemap) => void;
   onSelect: (f: BFeature, clientX: number, clientY: number) => void;
+  /** Right-click copy of a building centroid; `ok` is false if the clipboard was blocked. */
+  onCoordsCopied: (text: string, ok: boolean) => void;
   onViewportFeatures: (features: BFeature[], capped: boolean, zoomedIn: boolean) => void;
 }
 
@@ -222,6 +225,16 @@ export default function MapView(props: Props) {
         if (!f) return;
         const oe = e.originalEvent as MouseEvent;
         propsRef.current.onSelect(f, oe.clientX, oe.clientY);
+      });
+      // Right-click a building to copy its centroid. Ordered lat,lon because
+      // that is what ArcGIS and Google Maps search boxes expect on paste.
+      map.on('contextmenu', 'pts', (e) => {
+        const f = e.features && (e.features[0] as unknown as BFeature);
+        if (!f) return;
+        (e.originalEvent as MouseEvent).preventDefault();
+        const [lon, lat] = f.geometry.coordinates;
+        const text = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+        copyText(text).then((ok) => propsRef.current.onCoordsCopied(text, ok));
       });
       map.on('mouseenter', 'pts', () => (map.getCanvas().style.cursor = 'pointer'));
       map.on('mouseleave', 'pts', () => (map.getCanvas().style.cursor = ''));
