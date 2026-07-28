@@ -125,7 +125,7 @@ export default function App() {
   const [detail, setDetail] = useState<{ feature: BFeature; x: number; y: number } | null>(null);
 
   const [exportPayload, setExportPayload] =
-    useState<{ filename: string; data: string; mime: string } | null>(null);
+    useState<{ filename: string; data: string } | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
   const [toast, setToast] = useState<{ ic: string; msg: string } | null>(null);
@@ -193,12 +193,15 @@ export default function App() {
     showToast('✓', 'Validation saved');
   };
 
-  // Fires the download, and when embedded also surfaces the copy/new-tab
-  // fallback because a sandboxed iframe swallows the download silently.
+  // A sandboxed iframe swallows downloads silently, so embedded reviewers get
+  // the copy-out panel instead of a download that could never fire.
   const deliver = (filename: string, data: string, mime: string) => {
+    if (isEmbedded()) {
+      setExportPayload({ filename, data });
+      return;
+    }
     download(filename, data, mime);
-    if (isEmbedded()) setExportPayload({ filename, data, mime });
-    else showToast('⬇', 'Export downloaded');
+    showToast('⬇', 'Export downloaded');
   };
 
   const exportCsv = () => {
@@ -299,8 +302,6 @@ export default function App() {
         <ExportModal
           filename={exportPayload.filename}
           data={exportPayload.data}
-          mime={exportPayload.mime}
-          onDownload={() => download(exportPayload.filename, exportPayload.data, exportPayload.mime)}
           onClose={() => setExportPayload(null)}
         />
       )}
