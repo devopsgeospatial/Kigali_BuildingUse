@@ -163,6 +163,17 @@ select:focus,input:focus{border-color:var(--accent)}
 .reviewer-modal-actions .rm-save{background:var(--accent);border-color:var(--accent);color:#1a1200;font-weight:700}
 .reviewer-modal-actions .rm-save:disabled{opacity:.5;cursor:not-allowed}
 
+/* ---------------- EXPORT FALLBACK (sandboxed embeds block downloads) --- */
+.export-modal{width:min(680px,92vw);background:var(--panel2);border:1px solid var(--line);
+      border-radius:12px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.55)}
+.export-modal textarea{width:100%;height:min(46vh,320px);resize:vertical;padding:10px 12px;
+      border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--txt);
+      font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;outline:none;white-space:pre}
+.export-modal textarea:focus{border-color:var(--accent)}
+.export-modal .reviewer-modal-actions{flex-wrap:wrap}
+.export-error{margin-top:10px;font-size:12px;color:var(--bad);line-height:1.5}
+.reviewer-modal-actions .rm-danger{background:var(--bad);border-color:var(--bad);color:#fff;font-weight:700}
+
 @media (max-width:760px){
   #app{flex-direction:column}
   #panel{width:100%;min-width:0;height:44vh;border-right:none;border-bottom:1px solid var(--line)}

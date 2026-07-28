@@ -3,6 +3,8 @@ import ControlPanel, { type CompRow } from './components/ControlPanel';
 import MapView from './components/MapView';
 import DetailPanel from './components/DetailPanel';
 import ReviewerModal from './components/ReviewerModal';
+import ExportModal from './components/ExportModal';
+import ConfirmModal from './components/ConfirmModal';
 import {
   COLORS,
   DATE_COLORS,
@@ -76,12 +78,34 @@ function computeComposition(
 }
 
 const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+
+/** True when the app is running inside an iframe (e.g. an Experience Builder
+ *  Embed widget), where script-initiated downloads are usually sandboxed off. */
+function isEmbedded(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    // Cross-origin parent — the throw itself proves we are framed.
+    return true;
+  }
+}
+
 function download(name: string, data: string, type: string) {
+  const url = URL.createObjectURL(new Blob([data], { type }));
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([data], { type }));
+  a.href = url;
   a.download = name;
+  a.rel = 'noopener';
+  // Firefox only dispatches the click if the anchor is in the document, and
+  // the download is asynchronous — revoking the URL on the next line cancels
+  // it in some browsers, so defer the revoke well past the click.
+  a.style.display = 'none';
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(a.href);
+  window.setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 60000);
 }
 
 export default function App() {
@@ -99,6 +123,10 @@ export default function App() {
   const [city, setCity] = useState<CityStats | null>(null);
   const [viewportFeatures, setViewportFeatures] = useState<BFeature[]>([]);
   const [detail, setDetail] = useState<{ feature: BFeature; x: number; y: number } | null>(null);
+
+  const [exportPayload, setExportPayload] =
+    useState<{ filename: string; data: string; mime: string } | null>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const [toast, setToast] = useState<{ ic: string; msg: string } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
@@ -165,6 +193,14 @@ export default function App() {
     showToast('✓', 'Validation saved');
   };
 
+  // Fires the download, and when embedded also surfaces the copy/new-tab
+  // fallback because a sandboxed iframe swallows the download silently.
+  const deliver = (filename: string, data: string, mime: string) => {
+    download(filename, data, mime);
+    if (isEmbedded()) setExportPayload({ filename, data, mime });
+    else showToast('⬇', 'Export downloaded');
+  };
+
   const exportCsv = () => {
     const rows: string[][] = [[
       'OBJECTID', 'UPI', 'sector', 'district', 'predicted_code', 'predicted_use',
@@ -179,20 +215,28 @@ export default function App() {
     );
     if (rows.length === 1) { showToast('!', 'No validations to export yet'); return; }
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-    download('sparc_validations_' + stamp() + '.csv', csv, 'text/csv');
+    deliver('sparc_validations_' + stamp() + '.csv', csv, 'text/csv;charset=utf-8');
   };
   const exportJson = () => {
     if (!Object.keys(validations).length) { showToast('!', 'No validations to export yet'); return; }
-    download('sparc_validations_' + stamp() + '.json', JSON.stringify(validations, null, 2), 'application/json');
+    deliver(
+      'sparc_validations_' + stamp() + '.json',
+      JSON.stringify(validations, null, 2),
+      'application/json',
+    );
   };
+  // window.confirm() is suppressed in cross-origin iframes and returns false
+  // there, which silently swallowed the clear — use the in-app modal instead.
   const clearAll = () => {
     const n = Object.keys(validations).length;
     if (!n) { showToast('!', 'Nothing to clear'); return; }
-    if (window.confirm(`Clear all ${n} validations stored on this device? Export first if you need them.`)) {
-      setValidations({});
-      saveValidations({});
-      showToast('✓', 'Cleared');
-    }
+    setConfirmClear(true);
+  };
+  const doClearAll = () => {
+    setValidations({});
+    saveValidations({});
+    setConfirmClear(false);
+    showToast('✓', 'Cleared');
   };
 
   return (
@@ -248,6 +292,26 @@ export default function App() {
           current={reviewer}
           onSave={applyReviewer}
           onClose={() => setReviewerModalOpen(false)}
+        />
+      )}
+
+      {exportPayload && (
+        <ExportModal
+          filename={exportPayload.filename}
+          data={exportPayload.data}
+          mime={exportPayload.mime}
+          onDownload={() => download(exportPayload.filename, exportPayload.data, exportPayload.mime)}
+          onClose={() => setExportPayload(null)}
+        />
+      )}
+
+      {confirmClear && (
+        <ConfirmModal
+          title="Clear all validations?"
+          body={`This removes all ${Object.keys(validations).length} decisions stored on this device. Export them first if you need them — this cannot be undone.`}
+          confirmLabel="Clear all"
+          onConfirm={doClearAll}
+          onClose={() => setConfirmClear(false)}
         />
       )}
 
