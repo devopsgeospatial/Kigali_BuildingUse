@@ -207,12 +207,16 @@ export default function App() {
   const exportCsv = () => {
     const rows: string[][] = [[
       'OBJECTID', 'UPI', 'sector', 'district', 'predicted_code', 'predicted_use',
-      'match_ground', 'corrected_code', 'corrected_use', 'reviewer', 'timestamp',
+      'match_ground', 'corrected_code', 'corrected_use', 'lon', 'lat',
+      'reviewer', 'timestamp',
     ]];
     Object.entries(validations).forEach(([oid, v]) =>
       rows.push([
         oid, v.upi || '', v.sector || '', v.district || '', v.predicted || '', v.predictedUse || '',
         v.match || '', v.corrected || '', v.corrected ? LABELS[v.corrected] || v.corrected : '',
+        // 7 decimals ≈ 1 cm; enough to plot the centroid as an XY table.
+        typeof v.lon === 'number' ? v.lon.toFixed(7) : '',
+        typeof v.lat === 'number' ? v.lat.toFixed(7) : '',
         v.reviewer || '', new Date(v.ts).toISOString(),
       ]),
     );
@@ -220,12 +224,39 @@ export default function App() {
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     deliver('sparc_validations_' + stamp() + '.csv', csv, 'text/csv;charset=utf-8');
   };
+  // Exported as GeoJSON so the data team can load it straight into ArcGIS/QGIS.
+  // Records saved before centroids were stored have no lon/lat, so their
+  // geometry is null — valid GeoJSON, and the OBJECTID still joins back to the
+  // source layer.
   const exportJson = () => {
     if (!Object.keys(validations).length) { showToast('!', 'No validations to export yet'); return; }
+    const fc = {
+      type: 'FeatureCollection',
+      features: Object.entries(validations).map(([oid, v]) => ({
+        type: 'Feature',
+        geometry:
+          typeof v.lon === 'number' && typeof v.lat === 'number'
+            ? { type: 'Point', coordinates: [v.lon, v.lat] }
+            : null,
+        properties: {
+          OBJECTID: Number(oid),
+          UPI: v.upi || '',
+          sector: v.sector || '',
+          district: v.district || '',
+          predicted_code: v.predicted || '',
+          predicted_use: v.predictedUse || '',
+          match_ground: v.match || '',
+          corrected_code: v.corrected || '',
+          corrected_use: v.corrected ? LABELS[v.corrected] || v.corrected : '',
+          reviewer: v.reviewer || '',
+          timestamp: new Date(v.ts).toISOString(),
+        },
+      })),
+    };
     deliver(
-      'sparc_validations_' + stamp() + '.json',
-      JSON.stringify(validations, null, 2),
-      'application/json',
+      'sparc_validations_' + stamp() + '.geojson',
+      JSON.stringify(fc, null, 2),
+      'application/geo+json',
     );
   };
   // window.confirm() is suppressed in cross-origin iframes and returns false

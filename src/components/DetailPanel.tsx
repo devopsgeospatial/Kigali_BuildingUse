@@ -85,6 +85,8 @@ export default function DetailPanel({ feature, initialX, initialY, existing, rev
       district: p.district || DISTRICTS[p.sector || ''] || '',
       predicted: code,
       predictedUse: p.Predicted_Use,
+      lon: feature.geometry?.coordinates?.[0],
+      lat: feature.geometry?.coordinates?.[1],
       reviewer: name,
       ts: Date.now(),
     };

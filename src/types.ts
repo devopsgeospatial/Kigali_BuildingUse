@@ -40,6 +40,10 @@ export interface ValidationRecord {
   district?: string;
   predicted?: string;
   predictedUse?: string;
+  /** Building centroid, captured at save time so the export can carry geometry.
+   *  Absent on records saved before geometry was stored. */
+  lon?: number;
+  lat?: number;
   reviewer: string;
   ts: number;
 }
