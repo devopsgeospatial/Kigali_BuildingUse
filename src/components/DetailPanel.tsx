@@ -98,11 +98,9 @@ export default function DetailPanel({ feature, initialX, initialY, existing, rev
   return (
     <div id="detail" className="show" ref={ref} style={{ left: pos.x, top: pos.y }}>
       <div id="detailHead" style={{ background: col }} onPointerDown={onHeadPointerDown}>
-        {/* UPI is deliberately not shown to reviewers: it identifies the parcel
-            owner, and the decision should rest on visible evidence alone. It is
-            still saved with every record and carried into the export, where it
-            is the join key. Restore the <span className="upi"> here to undo. */}
-        <span>{LABELS[code] || p.Predicted_Use || code}</span>
+        <span>
+          {LABELS[code] || p.Predicted_Use || code} <span className="upi">UPI {p.UPI || '—'}</span>
+        </span>
         <span className="x" onClick={onClose}>
           ×
         </span>
